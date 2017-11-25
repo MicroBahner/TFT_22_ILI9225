@@ -6,6 +6,14 @@
 #define  PROGMEM
 #endif
 
+#define USE_STRING_CLASS
+
+#ifdef USE_STRING_CLASS
+    #define STRING String
+#else
+    #define STRING const char *
+#endif
+
 #if ARDUINO >= 100
     #include "Arduino.h"
 #else
@@ -250,11 +258,12 @@ class TFT_22_ILI9225 {
         /// @param    y point coordinate, y-axis
         /// @param    s text string
         /// @param    color 16-bit color, default=white
-        void drawText(uint16_t x, uint16_t y, const char * s, uint16_t color = COLOR_WHITE);
+        /// @return   x-position behind text
+        uint16_t  drawText(uint16_t x, uint16_t y, STRING s, uint16_t color = COLOR_WHITE);
         
         /// width of an ASCII Text (pixel )
         /// @param    s text string
-        uint16_t getTextWidth( const char * s ) ;
+        uint16_t getTextWidth( STRING s ) ;
         
         /// Calculate 16-bit color from 8-bit Red-Green-Blue components
         /// @param    red red component, 0x00..0xff
@@ -332,7 +341,7 @@ class TFT_22_ILI9225 {
         /// @param    y point coordinate, y-axis
         /// @param    s string to print
         /// @param    color 16-bit color
-        void drawGFXText(int16_t x, int16_t y, const char * s, uint16_t color);
+        void drawGFXText(int16_t x, int16_t y, STRING s, uint16_t color);
         
         /// Get the width & height of a text string with the current GFX font
         /// @param    str string to analyze
@@ -340,7 +349,7 @@ class TFT_22_ILI9225 {
         /// @param    y point coordinate, y-axis
         /// @param    w width in pixels of string 
         /// @param    h height in pixels of string
-        void getGFXTextExtent(const char * str, int16_t x, int16_t y, int16_t *w, int16_t *h);
+        void getGFXTextExtent(STRING str, int16_t x, int16_t y, int16_t *w, int16_t *h);
         
         /// Draw a single character with the current GFX font
         /// @param    x point coordinate, x-axis

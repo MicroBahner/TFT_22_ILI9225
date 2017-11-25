@@ -461,12 +461,12 @@ void TFT_22_ILI9225::_setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t 
         _writeRegister(ILI9225_RAM_ADDR_SET2,y1);
         break;
     }
-    //_writeCommand16( ILI9225_GRAM_DATA_REG );
+    _writeCommand16( ILI9225_GRAM_DATA_REG );
 
     //_writeRegister(ILI9225_RAM_ADDR_SET1,x0);
     //_writeRegister(ILI9225_RAM_ADDR_SET2,y0);
 
-    _writeCommand(0x00, 0x22);
+    //_writeCommand(0x00, 0x22);
 
     endWrite();
 }
@@ -491,8 +491,8 @@ void TFT_22_ILI9225::clear() {
 
 void TFT_22_ILI9225::invert(boolean flag) {
     startWrite();
-//    _writeCommand16(flag ? ILI9225C_INVON : ILI9225C_INVOFF);
-    _writeCommand(0x00, flag ? ILI9225C_INVON : ILI9225C_INVOFF);
+    _writeCommand16(flag ? ILI9225C_INVON : ILI9225C_INVOFF);
+    //_writeCommand(0x00, flag ? ILI9225C_INVON : ILI9225C_INVOFF);
     endWrite();
 }
 
@@ -765,30 +765,39 @@ void TFT_22_ILI9225::_swap(uint16_t &a, uint16_t &b) {
 }
 
 // Utilities
-void TFT_22_ILI9225::_writeCommand16(uint16_t HILO) {
+void TFT_22_ILI9225::_writeCommand16(uint16_t command) {
+# ifdef HSPI_WRITE16
     SPI_DC_LOW();
     SPI_CS_LOW();
-    HSPI_WRITE16(HILO);
+    HSPI_WRITE16(command);
     SPI_CS_HIGH();
+#else 
+    _spiWriteData(command >> 8);
+    _spiWriteData(0x00ff & command);
+#endif
+}
+
+void TFT_22_ILI9225::_writeData16(uint16_t data) {
+# ifdef HSPI_WRITE16
+    SPI_DC_HIGH();
+    SPI_CS_LOW();
+    HSPI_WRITE16(data);
+    SPI_CS_HIGH();
+#else 
+    _spiWriteData(data >> 8);
+    _spiWriteData(0x00ff & data);
+#endif
+}
+
+/*void TFT_22_ILI9225::_writeData(uint8_t HI, uint8_t LO) {
+    _spiWriteData(HI);
+    _spiWriteData(LO);
 }
 
 void TFT_22_ILI9225::_writeCommand(uint8_t HI, uint8_t LO) {
     _spiWriteCommand(HI);
     _spiWriteCommand(LO);
-}
-
-void TFT_22_ILI9225::_writeData16(uint16_t HILO) {
-    SPI_DC_HIGH();
-    SPI_CS_LOW();
-    HSPI_WRITE16(HILO);
-    SPI_CS_HIGH();
-
-}
-
-void TFT_22_ILI9225::_writeData(uint8_t HI, uint8_t LO) {
-    _spiWriteData(HI);
-    _spiWriteData(LO);
-}
+}*/
 
 
 void TFT_22_ILI9225::_writeRegister(uint16_t reg, uint16_t data) {
@@ -908,23 +917,36 @@ uint8_t * TFT_22_ILI9225::getFont() {
     return cfont.font;
 }
 
-void TFT_22_ILI9225::drawText(uint16_t x, uint16_t y, const char * s, uint16_t color) {
+uint16_t TFT_22_ILI9225::drawText(uint16_t x, uint16_t y, STRING s, uint16_t color) {
 
     uint16_t currx = x;
 
     // Print every character in string
+    #ifdef USE_STRING_CLASS
+    for (uint8_t k = 0; k < s.length(); k++) {
+        currx += drawChar(currx, y, s.charAt(k), color) + 1;
+    }
+    #else
     for (uint8_t k = 0; k < strlen(s); k++) {
         currx += drawChar(currx, y, s[k], color) + 1;
     }
+    #endif
+    return currx;
 }
 
-uint16_t TFT_22_ILI9225::getTextWidth( const char * s ) {
+uint16_t TFT_22_ILI9225::getTextWidth( STRING s ) {
 
     uint16_t width = 0;
-    // Count every character in string
+    // Count every character in string ( +1 for spacing )
+    #ifdef USE_STRING_CLASS
+    for (uint8_t k = 0; k < s.length(); k++) {
+        width += getCharWidth(s.charAt(k) ) + 1;
+    }
+    #else
     for (uint8_t k = 0; k < strlen(s); k++) {
         width += getCharWidth(s[k]) + 1;
     }
+    #endif
     return width;
 }
 
@@ -1102,15 +1124,21 @@ void TFT_22_ILI9225::setGFXFont(const GFXfont *f) {
 
 
 // Draw a string
-void TFT_22_ILI9225::drawGFXText(int16_t x, int16_t y, const char * s, uint16_t color) {
+void TFT_22_ILI9225::drawGFXText(int16_t x, int16_t y, STRING s, uint16_t color) {
 
     int16_t currx = x;
 
     if(gfxFont) {
         // Print every character in string
+        #ifdef USE_STRING_CLASS
+        for (uint8_t k = 0; k < s.length(); k++) {
+            currx += drawGFXChar(currx, y, s.charAt(k), color) + 1;
+        }
+        #else
         for (uint8_t k = 0; k < strlen(s); k++) {
             currx += drawGFXChar(currx, y, s[k], color) + 1;
         }
+        #endif
     }
 }
 
@@ -1167,10 +1195,15 @@ void TFT_22_ILI9225::getGFXCharExtent(uint8_t c, int16_t *gw, int16_t *gh, int16
 }
 
 
-void TFT_22_ILI9225::getGFXTextExtent(const char * str, int16_t x, int16_t y, int16_t *w, int16_t *h) {
+void TFT_22_ILI9225::getGFXTextExtent(STRING str, int16_t x, int16_t y, int16_t *w, int16_t *h) {
     *w  = *h = 0;
+    #ifdef USE_STRING_CLASS
+    for (uint8_t k = 0; k < str.length(); k++) {
+        uint8_t c = str.charAt(k);
+    #else
     for (uint8_t k = 0; k < strlen(str); k++) {
         uint8_t c = str[k];
+    #endif
         int16_t gw, gh, xa;
         getGFXCharExtent(c, &gw, &gh, &xa);
         if(gh > *h) {
