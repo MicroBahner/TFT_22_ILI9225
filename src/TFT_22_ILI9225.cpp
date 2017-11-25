@@ -322,7 +322,7 @@ void TFT_22_ILI9225::begin()
     startWrite();
     _writeRegister(ILI9225_DRIVER_OUTPUT_CTRL, 0x011C); // set the display line number and display direction
     _writeRegister(ILI9225_LCD_AC_DRIVING_CTRL, 0x0100); // set 1 line inversion
-    _writeRegister(ILI9225_ENTRY_MODE, 0x1030); // set GRAM write direction and BGR=1.
+    _writeRegister(ILI9225_ENTRY_MODE, 0x1038); // set GRAM write direction and BGR=1.
     _writeRegister(ILI9225_DISP_CTRL1, 0x0000); // Display off
     _writeRegister(ILI9225_BLANK_PERIOD_CTRL1, 0x0808); // set the back porch and front porch
     _writeRegister(ILI9225_FRAME_CYCLE_CTRL, 0x1100); // set the clocks number per line
@@ -442,14 +442,35 @@ void TFT_22_ILI9225::_setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t 
 
     _writeRegister(ILI9225_VERTICAL_WINDOW_ADDR1,y1);
     _writeRegister(ILI9225_VERTICAL_WINDOW_ADDR2,y0);
+    // starting position within window and increment/decrement direction
+    switch ( _orientation ) {
+      case 0:
+        _writeRegister(ILI9225_RAM_ADDR_SET1,x0);
+        _writeRegister(ILI9225_RAM_ADDR_SET2,y0);
+        break;
+      case 1:
+        _writeRegister(ILI9225_RAM_ADDR_SET1,x1);
+        _writeRegister(ILI9225_RAM_ADDR_SET2,y0);
+        break;
+      case 2:
+        _writeRegister(ILI9225_RAM_ADDR_SET1,x1);
+        _writeRegister(ILI9225_RAM_ADDR_SET2,y1);
+        break;
+      case 3:
+        _writeRegister(ILI9225_RAM_ADDR_SET1,x0);
+        _writeRegister(ILI9225_RAM_ADDR_SET2,y1);
+        break;
+    }
+    //_writeCommand16( ILI9225_GRAM_DATA_REG );
 
-    _writeRegister(ILI9225_RAM_ADDR_SET1,x0);
-    _writeRegister(ILI9225_RAM_ADDR_SET2,y0);
+    //_writeRegister(ILI9225_RAM_ADDR_SET1,x0);
+    //_writeRegister(ILI9225_RAM_ADDR_SET2,y0);
 
     _writeCommand(0x00, 0x22);
 
     endWrite();
 }
+
 
 void TFT_22_ILI9225::_resetWindow() {
     _writeRegister(ILI9225_HORIZONTAL_WINDOW_ADDR1, 0x00AF); 
@@ -521,18 +542,23 @@ void TFT_22_ILI9225::setOrientation(uint8_t orientation) {
     case 0:
         _maxX = ILI9225_LCD_WIDTH;
         _maxY = ILI9225_LCD_HEIGHT;
+        _writeRegister(ILI9225_ENTRY_MODE, 0x1038); // set GRAM write direction and BGR=1.
+
         break;
     case 1:
         _maxX = ILI9225_LCD_HEIGHT;
         _maxY = ILI9225_LCD_WIDTH;
+        _writeRegister(ILI9225_ENTRY_MODE, 0x1020); // set GRAM write direction and BGR=1.
         break;
     case 2:
         _maxX = ILI9225_LCD_WIDTH;
         _maxY = ILI9225_LCD_HEIGHT;
+        _writeRegister(ILI9225_ENTRY_MODE, 0x1008); // set GRAM write direction and BGR=1.
         break;
     case 3:
         _maxX = ILI9225_LCD_HEIGHT;
         _maxY = ILI9225_LCD_WIDTH;
+        _writeRegister(ILI9225_ENTRY_MODE, 0x1010); // set GRAM write direction and BGR=1.
         break;
     }
 }
@@ -914,6 +940,9 @@ uint16_t TFT_22_ILI9225::drawChar(uint16_t x, uint16_t y, uint16_t ch, uint16_t 
 
     startWrite();
     checkSPI = false;
+    
+    _setWindow( x,y,x+charWidth+1, y+cfont.height-1 );  // set character Window
+
     for (i = 0; i <= charWidth; i++) {  // each font "column" (+1 blank column for spacing)
         h = 0;  // keep track of char height
         for (j = 0; j < cfont.nbrows; j++)     {  // each column byte
@@ -924,15 +953,15 @@ uint16_t TFT_22_ILI9225::drawChar(uint16_t x, uint16_t y, uint16_t ch, uint16_t 
             // Process every row in font character
             for (uint8_t k = 0; k < 8; k++) {
                 if (h >= cfont.height ) break;  // No need to process excess bits
-                if (bitRead(charData, k)) drawPixel(x + i, y + (j * 8) + k, color);
-                else                      drawPixel(x + i, y + (j * 8) + k, _bgColor);
+                if (bitRead(charData, k)) _writeData16( color);
+                else                      _writeData16( _bgColor);
                 h++;
             };
         };
     };
     checkSPI = true;
     endWrite();
-
+    _resetWindow();
     return charWidth;
 }
 
