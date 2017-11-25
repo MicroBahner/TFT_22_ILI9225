@@ -1,6 +1,11 @@
 #ifndef TFT_22_ILI9225_h
 #define TFT_22_ILI9225_h
 
+#ifdef __STM32F1__
+#define ARDUINO_STM32_FEATHER
+#define  PROGMEM
+#endif
+
 #if ARDUINO >= 100
     #include "Arduino.h"
 #else
@@ -245,8 +250,12 @@ class TFT_22_ILI9225 {
         /// @param    y point coordinate, y-axis
         /// @param    s text string
         /// @param    color 16-bit color, default=white
-        void drawText(uint16_t x, uint16_t y, String s, uint16_t color = COLOR_WHITE);
-
+        void drawText(uint16_t x, uint16_t y, const char * s, uint16_t color = COLOR_WHITE);
+        
+        /// width of an ASCII Text (pixel )
+        /// @param    s text string
+        uint16_t getTextWidth( const char * s ) ;
+        
         /// Calculate 16-bit color from 8-bit Red-Green-Blue components
         /// @param    red red component, 0x00..0xff
         /// @param    green green component, 0x00..0xff
@@ -284,7 +293,9 @@ class TFT_22_ILI9225 {
         /// Set current font
         /// @param    font Font name
         void setFont(uint8_t* font);
-
+        /// Get current font
+        uint8_t * getFont();
+        
         /// Draw single character (pixel coordinates)
         /// @param    x point coordinate, x-axis
         /// @param    y point coordinate, y-axis
@@ -293,6 +304,10 @@ class TFT_22_ILI9225 {
         /// @return   width of character in display pixels
         uint16_t drawChar(uint16_t x, uint16_t y, uint16_t ch, uint16_t color = COLOR_WHITE);
 
+        /// width of an ASCII character (pixel )
+        /// @param    ch ASCII character
+        uint16_t getCharWidth( uint16_t ch ) ;
+        
         /// Draw bitmap
         /// @param    x point coordinate, x-axis
         /// @param    y point coordinate, y-axis
@@ -317,7 +332,7 @@ class TFT_22_ILI9225 {
         /// @param    y point coordinate, y-axis
         /// @param    s string to print
         /// @param    color 16-bit color
-        void drawGFXText(int16_t x, int16_t y, String s, uint16_t color);
+        void drawGFXText(int16_t x, int16_t y, const char * s, uint16_t color);
         
         /// Get the width & height of a text string with the current GFX font
         /// @param    str string to analyze
@@ -325,7 +340,7 @@ class TFT_22_ILI9225 {
         /// @param    y point coordinate, y-axis
         /// @param    w width in pixels of string 
         /// @param    h height in pixels of string
-        void getGFXTextExtent(String str, int16_t x, int16_t y, int16_t *w, int16_t *h);
+        void getGFXTextExtent(const char * str, int16_t x, int16_t y, int16_t *w, int16_t *h);
         
         /// Draw a single character with the current GFX font
         /// @param    x point coordinate, x-axis
@@ -344,11 +359,13 @@ class TFT_22_ILI9225 {
 
         void _swap(uint16_t &a, uint16_t &b);
         void _setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
+        void _resetWindow();
         void _orientCoordinates(uint16_t &x1, uint16_t &y1);
         void _writeRegister(uint16_t reg, uint16_t data);
         void _writeData(uint8_t HI, uint8_t LO);
+        void _writeData16(uint16_t HILO);
         void _writeCommand(uint8_t HI, uint8_t LO);
-
+        void _writeCommand16(uint16_t HILO);
         uint16_t _maxX, _maxY, _bgColor;
 
 #if defined (__AVR__) || defined(TEENSYDUINO)
