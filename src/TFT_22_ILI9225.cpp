@@ -765,15 +765,15 @@ void TFT_22_ILI9225::_swap(uint16_t &a, uint16_t &b) {
 }
 
 // Utilities
-void TFT_22_ILI9225::_writeCommand16(uint16_t command) {
+/*void TFT_22_ILI9225::_writeCommand16(uint16_t command) {
 # ifdef HSPI_WRITE16
     SPI_DC_LOW();
     SPI_CS_LOW();
     HSPI_WRITE16(command);
     SPI_CS_HIGH();
 #else 
-    _spiWriteData(command >> 8);
-    _spiWriteData(0x00ff & command);
+    _spiWriteCommand(command >> 8);
+    _spiWriteCommand(0x00ff & command);
 #endif
 }
 
@@ -788,7 +788,30 @@ void TFT_22_ILI9225::_writeData16(uint16_t data) {
     _spiWriteData(0x00ff & data);
 #endif
 }
+*/
+void TFT_22_ILI9225::_writeCommand16(uint16_t command) {
+    SPI_DC_LOW();
+    SPI_CS_LOW();
+    # ifdef HSPI_WRITE16
+    HSPI_WRITE16(command);
+#else 
+    HSPI_WRITE(command >> 8);
+    HSPI_WRITE(0x00ff & command);
+#endif
+    SPI_CS_HIGH();
+}
 
+void TFT_22_ILI9225::_writeData16(uint16_t data) {
+    SPI_DC_HIGH();
+    SPI_CS_LOW();
+# ifdef HSPI_WRITE16
+    HSPI_WRITE16(data);
+#else 
+    HSPI_WRITE(data >> 8);
+    HSPI_WRITE(0x00ff & data);
+#endif
+    SPI_CS_HIGH();
+}
 /*void TFT_22_ILI9225::_writeData(uint8_t HI, uint8_t LO) {
     _spiWriteData(HI);
     _spiWriteData(LO);
