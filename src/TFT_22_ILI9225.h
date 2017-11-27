@@ -4,6 +4,8 @@
 #ifdef __STM32F1__
 #define ARDUINO_STM32_FEATHER
 #define  PROGMEM
+// if 'SPI_CHANNEL' is not defined, 'SPI' is used, only valid for STM32F1
+//#define SPI_CHANNEL SPI_2
 #endif
 
 #define USE_STRING_CLASS
@@ -74,6 +76,9 @@ typedef volatile uint32_t RwReg;
 
 #define ILI9225C_INVOFF  0x20
 #define ILI9225C_INVON   0x21
+
+// autoincrement modes (register ILI9225_ENTRY_MODE, bit 5..3 )
+enum autoIncMode_t { R2L_BottomUp, BottomUp_R2L, L2R_BottomUp, BottomUp_L2R, R2L_TopDown, TopDown_R2L, L2R_TopDown, TopDown_L2R };
 
 /* RGB 16-bit color table definition (RG565) */
 #define COLOR_BLACK          0x0000      /*   0,   0,   0 */
@@ -368,6 +373,7 @@ class TFT_22_ILI9225 {
 
         void _swap(uint16_t &a, uint16_t &b);
         void _setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
+        void _setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, autoIncMode_t mode);
         void _resetWindow();
         void _orientCoordinates(uint16_t &x1, uint16_t &y1);
         void _writeRegister(uint16_t reg, uint16_t data);
@@ -400,6 +406,15 @@ class TFT_22_ILI9225 {
 #endif
 
         uint8_t  _orientation, _brightness;
+        
+        // correspondig modes if orientation changed:
+        const autoIncMode_t modeTab [3][8] = {
+        //          { R2L_BottomUp, BottomUp_R2L, L2R_BottomUp, BottomUp_L2R, R2L_TopDown,  TopDown_R2L,  L2R_TopDown,  TopDown_L2R }//
+        /* 90° */   { BottomUp_L2R, L2R_BottomUp, TopDown_L2R,  L2R_TopDown,  BottomUp_R2L, R2L_BottomUp, TopDown_R2L,  R2L_TopDown },   
+        /*180° */   { L2R_TopDown , TopDown_L2R,  R2L_TopDown,  TopDown_R2L,  L2R_BottomUp, BottomUp_L2R, R2L_BottomUp, BottomUp_R2L}, 
+        /*270° */   { TopDown_R2L , R2L_TopDown,  BottomUp_R2L, R2L_BottomUp, TopDown_L2R,  L2R_TopDown,  BottomUp_L2R, L2R_BottomUp}
+                };
+ 
 
         bool  hwSPI, checkSPI, blState;
 

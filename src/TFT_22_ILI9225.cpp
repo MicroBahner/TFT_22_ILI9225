@@ -72,9 +72,9 @@
 
 // Hardware SPI Macros
 #ifndef ESP32
-    #ifdef __STM32F1__
-        extern SPIClass SPI_2; 
-        #define SPI_OBJECT  SPI_2
+    #ifdef SPI_CHANNEL
+        extern SPIClass SPI_CHANNEL; 
+        #define SPI_OBJECT  SPI_CHANNEL
     #else
         #define SPI_OBJECT  SPI
     #endif
@@ -427,38 +427,44 @@ void TFT_22_ILI9225::_orientCoordinates(uint16_t &x1, uint16_t &y1) {
     }
 }
 
-
 void TFT_22_ILI9225::_setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
+    _setWindow( x0, y0, x1, y1, TopDown_L2R ); // default for drawing charcters
+}
+
+void TFT_22_ILI9225::_setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, autoIncMode_t mode) {
+    uint16_t xyKoor[4];    //   x0,y0,x1,y1
     _orientCoordinates(x0, y0);
     _orientCoordinates(x1, y1);
 
     if (x1<x0) _swap(x0, x1);
     if (y1<y0) _swap(y0, y1);
-
+    
     startWrite();
-
+    // autoincrement mode
+    if ( _orientation > 0 ) mode = modeTab[_orientation-1][mode];
+    _writeRegister(ILI9225_ENTRY_MODE, 0x1000 | ( mode<<3) );
     _writeRegister(ILI9225_HORIZONTAL_WINDOW_ADDR1,x1);
     _writeRegister(ILI9225_HORIZONTAL_WINDOW_ADDR2,x0);
 
     _writeRegister(ILI9225_VERTICAL_WINDOW_ADDR1,y1);
     _writeRegister(ILI9225_VERTICAL_WINDOW_ADDR2,y0);
     // starting position within window and increment/decrement direction
-    switch ( _orientation ) {
+    switch ( mode>>1 ) {
       case 0:
-        _writeRegister(ILI9225_RAM_ADDR_SET1,x0);
-        _writeRegister(ILI9225_RAM_ADDR_SET2,y0);
+        _writeRegister(ILI9225_RAM_ADDR_SET1,x1);
+        _writeRegister(ILI9225_RAM_ADDR_SET2,y1);
         break;
       case 1:
-        _writeRegister(ILI9225_RAM_ADDR_SET1,x1);
-        _writeRegister(ILI9225_RAM_ADDR_SET2,y0);
+        _writeRegister(ILI9225_RAM_ADDR_SET1,x0);
+        _writeRegister(ILI9225_RAM_ADDR_SET2,y1);
         break;
       case 2:
         _writeRegister(ILI9225_RAM_ADDR_SET1,x1);
-        _writeRegister(ILI9225_RAM_ADDR_SET2,y1);
+        _writeRegister(ILI9225_RAM_ADDR_SET2,y0);
         break;
       case 3:
         _writeRegister(ILI9225_RAM_ADDR_SET1,x0);
-        _writeRegister(ILI9225_RAM_ADDR_SET2,y1);
+        _writeRegister(ILI9225_RAM_ADDR_SET2,y0);
         break;
     }
     _writeCommand16( ILI9225_GRAM_DATA_REG );
@@ -542,23 +548,19 @@ void TFT_22_ILI9225::setOrientation(uint8_t orientation) {
     case 0:
         _maxX = ILI9225_LCD_WIDTH;
         _maxY = ILI9225_LCD_HEIGHT;
-        _writeRegister(ILI9225_ENTRY_MODE, 0x1038); // set GRAM write direction and BGR=1.
 
         break;
     case 1:
         _maxX = ILI9225_LCD_HEIGHT;
         _maxY = ILI9225_LCD_WIDTH;
-        _writeRegister(ILI9225_ENTRY_MODE, 0x1020); // set GRAM write direction and BGR=1.
         break;
     case 2:
         _maxX = ILI9225_LCD_WIDTH;
         _maxY = ILI9225_LCD_HEIGHT;
-        _writeRegister(ILI9225_ENTRY_MODE, 0x1008); // set GRAM write direction and BGR=1.
         break;
     case 3:
         _maxX = ILI9225_LCD_HEIGHT;
         _maxY = ILI9225_LCD_WIDTH;
-        _writeRegister(ILI9225_ENTRY_MODE, 0x1010); // set GRAM write direction and BGR=1.
         break;
     }
 }
@@ -1084,8 +1086,7 @@ uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
 }
 
 // drawBitmap() variant w/background for RAM-resident (not PROGMEM) bitmaps.
-void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y,
-uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg) {
+void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y, uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg) {
 
     int16_t i, j, byteWidth = (w + 7) / 8;
     uint8_t byte;
@@ -1107,8 +1108,7 @@ uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg) {
 //Draw XBitMap Files (*.xbm), exported from GIMP,
 //Usage: Export from GIMP to *.xbm, rename *.xbm to *.c and open in editor.
 //C Array can be directly used with this function
-void TFT_22_ILI9225::drawXBitmap(int16_t x, int16_t y,
-const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
+void TFT_22_ILI9225::drawXBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
 
     int16_t i, j, byteWidth = (w + 7) / 8;
     uint8_t byte;
