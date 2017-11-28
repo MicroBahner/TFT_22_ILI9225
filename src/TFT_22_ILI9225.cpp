@@ -1,4 +1,16 @@
 #include "TFT_22_ILI9225.h"
+
+//#define DEBUG
+#ifdef DEBUG
+    //#define DB_PRINT( x, ... ) { char dbgbuf[60]; sprintf_P( dbgbuf, (const char*) F( x ), __VA_ARGS__ ) ; Serial.print( dbgbuf ); }
+    #define DB_PRINT( ... ) { char dbgbuf[60]; sprintf( dbgbuf,   __VA_ARGS__ ) ; Serial.println( dbgbuf ); }
+    
+#else
+    #define DB_PRINT(  ... ) ;
+#endif
+
+
+
 #ifndef ARDUINO_STM32_FEATHER
     #include "pins_arduino.h"
     #ifndef RASPI
@@ -432,7 +444,7 @@ void TFT_22_ILI9225::_setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t 
 }
 
 void TFT_22_ILI9225::_setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, autoIncMode_t mode) {
-    uint16_t xyKoor[4];    //   x0,y0,x1,y1
+    DB_PRINT( "setWindows( x0=%d, y0=%d, x1=%d, y1=%d, mode=%d", x0,y0,x1,y1,mode );
     _orientCoordinates(x0, y0);
     _orientCoordinates(x1, y1);
 
@@ -448,6 +460,7 @@ void TFT_22_ILI9225::_setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t 
 
     _writeRegister(ILI9225_VERTICAL_WINDOW_ADDR1,y1);
     _writeRegister(ILI9225_VERTICAL_WINDOW_ADDR2,y0);
+    DB_PRINT( "gedreht: x0=%d, y0=%d, x1=%d, y1=%d, mode=%d", x0,y0,x1,y1,mode );
     // starting position within window and increment/decrement direction
     switch ( mode>>1 ) {
       case 0:
@@ -1047,18 +1060,45 @@ const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
 // foreground (for set bits) and background (for clear bits) colors.
 void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y,
 const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg) {
-
+    bool transparent = (bg == 0xffff);
+    bool trFlg = false;     // Flag weather transparent pixel was 'written'
     int16_t i, j, byteWidth = (w + 7) / 8;
+    int16_t wx0,wy0,wx1,wy1,wh,ww;  // Window-position and size
     uint8_t byte;
-
+    // adjust window hight/width to displaydimensions
+    DB_PRINT( "DrawBitmap.. maxX=%d, maxY=%d", _maxX,_maxY );
+    wx0 = x<0?0:x;
+    wy0 = y<0?0:y;
+    wx1 = (x+w>_maxX?_maxX:x+w)-1;
+    wy1 = (y+h>_maxY?_maxY:y+h)-1;
+    wh  = wy1-wy0 +1;
+    ww  = wx1-wx0 +1;
+    _setWindow( wx0,wy0,wx1,wy1,L2R_TopDown);
     startWrite();
     checkSPI = false;
-    for (j = 0; j < h; j++) {
+    for (j = y>=0?0:-y; j < (y>=0?0:-y)+wh; j++) {
         for (i = 0; i < w; i++ ) {
             if (i & 7) byte <<= 1;
             else      byte   = pgm_read_byte(bitmap + j * byteWidth + i / 8);
-            if (byte & 0x80) drawPixel(x + i, y + j, color);
-            else             drawPixel(x + i, y + j, bg);
+            //if (byte & 0x80) drawPixel(x + i, y + j, color);
+            //else             drawPixel(x + i, y + j, bg);
+            if ( x+i >= wx0 && x+i <= wx1 ) {
+                // write only if pixel is within window
+                if (byte & 0x80) {
+                    if (trFlg) {
+                        //there was a transparent area, set pixelkoordinates again
+                        drawPixel(x + i, y + j, color);
+                        trFlg = false;
+                    }
+                    else  { 
+                        _writeData16(color);
+                    }
+                }
+                else  {
+                    if (transparent) trFlg = true; 
+                    else _writeData16( bg);
+                }
+            }
         }
     }
     checkSPI = true;
