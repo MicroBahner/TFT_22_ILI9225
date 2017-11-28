@@ -1038,21 +1038,7 @@ uint16_t TFT_22_ILI9225::getCharWidth(uint16_t ch) {
 // foreground color (unset bits are transparent).
 void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y,
 const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
-
-    int16_t i, j, byteWidth = (w + 7) / 8;
-    uint8_t byte = 0;
-
-    startWrite();
-    checkSPI = false;
-    for (j = 0; j < h; j++) {
-        for (i = 0; i < w; i++) {
-            if (i & 7) byte <<= 1;
-            else       byte   = pgm_read_byte(bitmap + j * byteWidth + i / 8);
-            if (byte & 0x80) drawPixel(x + i, y + j, color);
-        }
-    }
-    checkSPI = true;
-    endWrite();
+    _drawBitmap( x,  y, bitmap,  w,  h, color,  0, true, true );
 }
 
 // Draw a 1-bit image (bitmap) at the specified (x,y) position from the
@@ -1060,8 +1046,24 @@ const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
 // foreground (for set bits) and background (for clear bits) colors.
 void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y,
 const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg) {
-    bool transparent = (bg == 0xffff);
-    bool trFlg = false;     // Flag weather transparent pixel was 'written'
+    _drawBitmap( x,  y, bitmap,  w,  h, color,  bg, false, true );
+}
+
+// drawBitmap() variant for RAM-resident (not PROGMEM) bitmaps.
+void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y,
+uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
+    _drawBitmap( x,  y, bitmap,  w,  h, color,  0, true, false );
+}
+
+// drawBitmap() variant w/background for RAM-resident (not PROGMEM) bitmaps.
+void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y, uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg) {
+    _drawBitmap( x,  y, bitmap,  w,  h, color,  bg, false, false );
+}
+
+// internal function for drawing bitmaps with/without transparent bg, or from ram or progmem
+void TFT_22_ILI9225::_drawBitmap(int16_t x, int16_t y,
+const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg, bool transparent, bool progmem) {
+    bool noAutoInc = false;     // Flag set when transparent pixel was 'written'
     int16_t i, j, byteWidth = (w + 7) / 8;
     int16_t wx0,wy0,wx1,wy1,wh,ww;  // Window-position and size
     uint8_t byte;
@@ -1079,23 +1081,23 @@ const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg) {
     for (j = y>=0?0:-y; j < (y>=0?0:-y)+wh; j++) {
         for (i = 0; i < w; i++ ) {
             if (i & 7) byte <<= 1;
-            else      byte   = pgm_read_byte(bitmap + j * byteWidth + i / 8);
-            //if (byte & 0x80) drawPixel(x + i, y + j, color);
-            //else             drawPixel(x + i, y + j, bg);
+            else {  if ( progmem ) byte   = pgm_read_byte(bitmap + j * byteWidth + i / 8);
+                    else      byte   = bitmap[j * byteWidth + i / 8];
+            }
             if ( x+i >= wx0 && x+i <= wx1 ) {
                 // write only if pixel is within window
                 if (byte & 0x80) {
-                    if (trFlg) {
+                    if (noAutoInc) {
                         //there was a transparent area, set pixelkoordinates again
                         drawPixel(x + i, y + j, color);
-                        trFlg = false;
+                        noAutoInc = false;
                     }
                     else  { 
                         _writeData16(color);
                     }
                 }
                 else  {
-                    if (transparent) trFlg = true; 
+                    if (transparent) noAutoInc = true; // no autoincrement in transparent area!
                     else _writeData16( bg);
                 }
             }
@@ -1105,45 +1107,7 @@ const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg) {
     endWrite();
 }
 
-// drawBitmap() variant for RAM-resident (not PROGMEM) bitmaps.
-void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y,
-uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
 
-    int16_t i, j, byteWidth = (w + 7) / 8;
-    uint8_t byte;
-
-    startWrite();
-    checkSPI = false;
-    for(j = 0; j < h; j++) {
-        for(i = 0; i < w; i++) {
-            if (i & 7) byte <<= 1;
-            else      byte   = bitmap[j * byteWidth + i / 8];
-            if (byte & 0x80) drawPixel(x + i, y + j, color);
-        }
-    }
-    checkSPI = true;
-    endWrite();
-}
-
-// drawBitmap() variant w/background for RAM-resident (not PROGMEM) bitmaps.
-void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y, uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg) {
-
-    int16_t i, j, byteWidth = (w + 7) / 8;
-    uint8_t byte;
-
-    startWrite();
-    checkSPI = false;
-    for (j = 0; j < h; j++) {
-        for (i = 0; i < w; i++ ) {
-            if (i & 7) byte <<= 1;
-            else      byte   = bitmap[j * byteWidth + i / 8];
-            if (byte & 0x80) drawPixel(x + i, y + j, color);
-            else             drawPixel(x + i, y + j, bg);
-        }
-    }
-    checkSPI = true;
-    endWrite();
-}
 
 //Draw XBitMap Files (*.xbm), exported from GIMP,
 //Usage: Export from GIMP to *.xbm, rename *.xbm to *.c and open in editor.
