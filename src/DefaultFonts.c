@@ -4,7 +4,7 @@
   #include <pgmspace.h>
 #endif
 
-#if defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_SAMD)
+#if defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_SAMD) || defined(__STM32F1__)
   #define PROGMEM
   #define fontdatatype const char
 #else

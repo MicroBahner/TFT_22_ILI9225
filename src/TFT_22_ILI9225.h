@@ -8,7 +8,10 @@
 #endif
 #include <SPI.h>
 #include "gfxfont.h"
-
+#ifdef __STM32F1__
+#define ARDUINO_STM32_FEATHER
+#define  PROGMEM
+#endif
 #if defined(ARDUINO_STM32_FEATHER)
 typedef volatile uint32 RwReg;
 #endif
