@@ -140,6 +140,7 @@ struct _currentFont
     uint8_t offset;
     uint8_t numchars;
     uint8_t nbrows;
+    bool    monoSp;
 };
 
 #if defined (ARDUINO_STM32_FEATHER)
@@ -306,7 +307,8 @@ class TFT_22_ILI9225 {
 
         /// Set current font
         /// @param    font Font name
-        void setFont(uint8_t* font);
+        void setFont(uint8_t* font, bool monoSp=false ); // default = proportional
+        
         /// Get current font
         uint8_t * getFont();
         

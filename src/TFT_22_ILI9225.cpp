@@ -938,8 +938,7 @@ void TFT_22_ILI9225::setBackgroundColor(uint16_t color) {
     _bgColor = color;
 }
 
-
-void TFT_22_ILI9225::setFont(uint8_t* font) {
+void TFT_22_ILI9225::setFont(uint8_t* font, bool monoSp) {
 
     cfont.font     = font;
     cfont.width    = readFontByte(0);
@@ -947,6 +946,7 @@ void TFT_22_ILI9225::setFont(uint8_t* font) {
     cfont.offset   = readFontByte(2);
     cfont.numchars = readFontByte(3);
     cfont.nbrows   = cfont.height / 8;
+    cfont.monoSp   = monoSp;
 
     if (cfont.height % 8) cfont.nbrows++;  // Set number of bytes used by height of font in multiples of 8
 }
@@ -995,7 +995,8 @@ uint16_t TFT_22_ILI9225::drawChar(uint16_t x, uint16_t y, uint16_t ch, uint16_t 
     uint16_t charOffset;
     charOffset = (cfont.width * cfont.nbrows) + 1;  // bytes used by each character
     charOffset = (charOffset * (ch - cfont.offset)) + FONT_HEADER_SIZE;  // char offset (add 4 for font header)
-    charWidth  = readFontByte(charOffset);  // get font width from 1st byte
+    if ( cfont.monoSp ) charWidth = cfont.width;      // monospaced: get char width from font
+    else                charWidth  = readFontByte(charOffset);  // get chracter width from 1st byte
     charOffset++;  // increment pointer to first character data byte
 
     startWrite();
