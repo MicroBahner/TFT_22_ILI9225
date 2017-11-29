@@ -1038,7 +1038,7 @@ uint16_t TFT_22_ILI9225::getCharWidth(uint16_t ch) {
 // foreground color (unset bits are transparent).
 void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y,
 const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
-    _drawBitmap( x,  y, bitmap,  w,  h, color,  0, true, true );
+    _drawBitmap( x,  y, bitmap,  w,  h, color,  0, true, true, false );
 }
 
 // Draw a 1-bit image (bitmap) at the specified (x,y) position from the
@@ -1046,27 +1046,40 @@ const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
 // foreground (for set bits) and background (for clear bits) colors.
 void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y,
 const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg) {
-    _drawBitmap( x,  y, bitmap,  w,  h, color,  bg, false, true );
+    _drawBitmap( x,  y, bitmap,  w,  h, color,  bg, false, true, false );
 }
 
 // drawBitmap() variant for RAM-resident (not PROGMEM) bitmaps.
 void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y,
 uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
-    _drawBitmap( x,  y, bitmap,  w,  h, color,  0, true, false );
+    _drawBitmap( x,  y, bitmap,  w,  h, color,  0, true, false, false );
 }
 
 // drawBitmap() variant w/background for RAM-resident (not PROGMEM) bitmaps.
 void TFT_22_ILI9225::drawBitmap(int16_t x, int16_t y, uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg) {
-    _drawBitmap( x,  y, bitmap,  w,  h, color,  bg, false, false );
+    _drawBitmap( x,  y, bitmap,  w,  h, color,  bg, false, false, false );
 }
+
+//Draw XBitMap Files (*.xbm), exported from GIMP,
+//Usage: Export from GIMP to *.xbm, rename *.xbm to *.c and open in editor.
+//C Array can be directly used with this function
+void TFT_22_ILI9225::drawXBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
+    _drawBitmap( x,  y, bitmap,  w,  h, color,  0, true, true, true );
+}
+
+void TFT_22_ILI9225::drawXBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg) {
+    _drawBitmap( x,  y, bitmap,  w,  h, color,  bg, false, true, true );
+}
+
 
 // internal function for drawing bitmaps with/without transparent bg, or from ram or progmem
 void TFT_22_ILI9225::_drawBitmap(int16_t x, int16_t y,
-const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg, bool transparent, bool progmem) {
+const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg, bool transparent, bool progmem,bool Xbit) {
     bool noAutoInc = false;     // Flag set when transparent pixel was 'written'
     int16_t i, j, byteWidth = (w + 7) / 8;
     int16_t wx0,wy0,wx1,wy1,wh,ww;  // Window-position and size
-    uint8_t byte;
+    uint8_t byte, maskBit;
+    maskBit = Xbit? 0x01:0x80;
     // adjust window hight/width to displaydimensions
     DB_PRINT( "DrawBitmap.. maxX=%d, maxY=%d", _maxX,_maxY );
     wx0 = x<0?0:x;
@@ -1080,13 +1093,13 @@ const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg, bool t
     checkSPI = false;
     for (j = y>=0?0:-y; j < (y>=0?0:-y)+wh; j++) {
         for (i = 0; i < w; i++ ) {
-            if (i & 7) byte <<= 1;
+            if (i & 7) { if ( Xbit ) byte >>=1; else byte <<= 1; }
             else {  if ( progmem ) byte   = pgm_read_byte(bitmap + j * byteWidth + i / 8);
                     else      byte   = bitmap[j * byteWidth + i / 8];
             }
             if ( x+i >= wx0 && x+i <= wx1 ) {
                 // write only if pixel is within window
-                if (byte & 0x80) {
+                if (byte & maskBit) {
                     if (noAutoInc) {
                         //there was a transparent area, set pixelkoordinates again
                         drawPixel(x + i, y + j, color);
@@ -1112,7 +1125,7 @@ const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg, bool t
 //Draw XBitMap Files (*.xbm), exported from GIMP,
 //Usage: Export from GIMP to *.xbm, rename *.xbm to *.c and open in editor.
 //C Array can be directly used with this function
-void TFT_22_ILI9225::drawXBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
+/*void TFT_22_ILI9225::drawXBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
 
     int16_t i, j, byteWidth = (w + 7) / 8;
     uint8_t byte;
@@ -1129,7 +1142,7 @@ void TFT_22_ILI9225::drawXBitmap(int16_t x, int16_t y, const uint8_t *bitmap, in
     checkSPI = true;
     endWrite();
 }
-
+*/
 
 void TFT_22_ILI9225::startWrite(void){
     SPI_BEGIN_TRANSACTION();

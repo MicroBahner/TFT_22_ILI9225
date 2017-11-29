@@ -336,6 +336,7 @@ class TFT_22_ILI9225 {
         void drawBitmap(int16_t x, int16_t y, uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg);
 
         void drawXBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color);
+        void drawXBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg);
 
         /// Set current GFX font
         /// @param    f GFX font name defined in include file
@@ -375,7 +376,8 @@ class TFT_22_ILI9225 {
         void _setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
         void _setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, autoIncMode_t mode);
         void _resetWindow();
-        void _drawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color, uint16_t bg, bool transparent, bool progmem );
+        void _drawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, 
+                            uint16_t color, uint16_t bg, bool transparent, bool progmem, bool Xbit );
         void _orientCoordinates(uint16_t &x1, uint16_t &y1);
         void _writeRegister(uint16_t reg, uint16_t data);
         void _writeData(uint8_t HI, uint8_t LO);
