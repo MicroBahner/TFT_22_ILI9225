@@ -440,11 +440,16 @@ void TFT_22_ILI9225::_orientCoordinates(uint16_t &x1, uint16_t &y1) {
 }
 
 void TFT_22_ILI9225::_setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
-    _setWindow( x0, y0, x1, y1, TopDown_L2R ); // default for drawing charcters
+    _setWindow( x0, y0, x1, y1, TopDown_L2R ); // default for drawing characters
 }
 
 void TFT_22_ILI9225::_setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, autoIncMode_t mode) {
     DB_PRINT( "setWindows( x0=%d, y0=%d, x1=%d, y1=%d, mode=%d", x0,y0,x1,y1,mode );
+    // clip to TFT-Dimensions
+    x0 = min( x0,_maxX-1 );
+    x1 = min( x1,_maxX-1 );
+    y0 = min( y0,_maxY-1 );
+    y1 = min( y1,_maxY-1 );
     _orientCoordinates(x0, y0);
     _orientCoordinates(x1, y1);
 
@@ -738,8 +743,6 @@ void TFT_22_ILI9225::drawPixel(uint16_t x1, uint16_t y1, uint16_t color) {
     if (checkSPI) startWrite();
     _writeRegister(ILI9225_RAM_ADDR_SET1,x1);
     _writeRegister(ILI9225_RAM_ADDR_SET2,y1);
-    //_writeCommand(0x00, 0x22);
-    //_writeData16(color);
     _writeRegister(ILI9225_GRAM_DATA_REG,color);
     
     if (checkSPI) endWrite();
@@ -993,6 +996,7 @@ uint16_t TFT_22_ILI9225::drawChar(uint16_t x, uint16_t y, uint16_t ch, uint16_t 
     uint8_t charData, charWidth;
     uint8_t h, i, j;
     uint16_t charOffset;
+    bool fastMode;
     charOffset = (cfont.width * cfont.nbrows) + 1;  // bytes used by each character
     charOffset = (charOffset * (ch - cfont.offset)) + FONT_HEADER_SIZE;  // char offset (add 4 for font header)
     if ( cfont.monoSp ) charWidth = cfont.width;      // monospaced: get char width from font
@@ -1002,7 +1006,10 @@ uint16_t TFT_22_ILI9225::drawChar(uint16_t x, uint16_t y, uint16_t ch, uint16_t 
     startWrite();
     checkSPI = false;
     
-    _setWindow( x,y,x+charWidth+1, y+cfont.height-1 );  // set character Window
+    // use autoincrement/decrement feature, if character fits completely on screen
+    fastMode = ( (x+charWidth+1) < _maxX && (y+cfont.height-1) < _maxY ) ;
+    
+    if ( fastMode )_setWindow( x,y,x+charWidth+1, y+cfont.height-1 );  // set character Window
 
     for (i = 0; i <= charWidth; i++) {  // each font "column" (+1 blank column for spacing)
         h = 0;  // keep track of char height
@@ -1014,12 +1021,12 @@ uint16_t TFT_22_ILI9225::drawChar(uint16_t x, uint16_t y, uint16_t ch, uint16_t 
             // Process every row in font character
             for (uint8_t k = 0; k < 8; k++) {
                 if (h >= cfont.height ) break;  // No need to process excess bits
-                if (bitRead(charData, k)) _writeData16( color);
-                else                      _writeData16( _bgColor);
+                if (fastMode ) _writeData16( bitRead(charData, k)?color:_bgColor );
+                else drawPixel( x + i, y + (j * 8) + k, bitRead(charData, k)?color:_bgColor );
                 h++;
-            };
-        };
-    };
+            }
+        }
+    }
     checkSPI = true;
     endWrite();
     _resetWindow();
