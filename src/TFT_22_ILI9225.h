@@ -142,6 +142,7 @@ struct _currentFont
     uint8_t nbrows;
     bool    monoSp;
 };
+#define MONOSPACE   1
 
 #if defined (ARDUINO_STM32_FEATHER)
     #undef USE_FAST_PINIO
