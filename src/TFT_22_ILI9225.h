@@ -311,7 +311,7 @@ class TFT_22_ILI9225 {
         void setFont(uint8_t* font, bool monoSp=false ); // default = proportional
         
         /// Get current font
-        uint8_t * getFont();
+        _currentFont getFont();
         
         /// Draw single character (pixel coordinates)
         /// @param    x point coordinate, x-axis

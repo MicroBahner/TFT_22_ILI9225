@@ -954,8 +954,8 @@ void TFT_22_ILI9225::setFont(uint8_t* font, bool monoSp) {
     if (cfont.height % 8) cfont.nbrows++;  // Set number of bytes used by height of font in multiples of 8
 }
 
-uint8_t * TFT_22_ILI9225::getFont() {
-    return cfont.font;
+_currentFont TFT_22_ILI9225::getFont() {
+    return cfont;
 }
 
 uint16_t TFT_22_ILI9225::drawText(uint16_t x, uint16_t y, STRING s, uint16_t color) {
