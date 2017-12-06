@@ -810,24 +810,50 @@ void TFT_22_ILI9225::_writeData16(uint16_t data) {
 void TFT_22_ILI9225::_writeCommand16(uint16_t command) {
     SPI_DC_LOW();
     SPI_CS_LOW();
-    # ifdef HSPI_WRITE16
-    HSPI_WRITE16(command);
-#else 
-    HSPI_WRITE(command >> 8);
-    HSPI_WRITE(0x00ff & command);
-#endif
+    if ( _clk < 0 ) {
+        # ifdef HSPI_WRITE16
+        HSPI_WRITE16(command);
+    #else 
+        HSPI_WRITE(command >> 8);
+        HSPI_WRITE(0x00ff & command);
+    #endif
+    } else {
+        // Fast SPI bitbang swiped from LPD8806 library
+        for(uint16_t bit = 0x8000; bit; bit >>= 1){
+            if((command) & bit){
+                SSPI_MOSI_HIGH();
+            } else {
+                SSPI_MOSI_LOW();
+            }
+            SSPI_SCK_HIGH();
+            SSPI_SCK_LOW();
+        }
+    }
     SPI_CS_HIGH();
 }
 
 void TFT_22_ILI9225::_writeData16(uint16_t data) {
     SPI_DC_HIGH();
     SPI_CS_LOW();
-# ifdef HSPI_WRITE16
-    HSPI_WRITE16(data);
-#else 
-    HSPI_WRITE(data >> 8);
-    HSPI_WRITE(0x00ff & data);
-#endif
+    if ( _clk < 0 ) {
+        # ifdef HSPI_WRITE16
+            HSPI_WRITE16(data);
+        #else 
+            HSPI_WRITE(data >> 8);
+            HSPI_WRITE(0x00ff & data);
+        #endif
+    } else {
+        // Fast SPI bitbang swiped from LPD8806 library
+        for(uint16_t bit = 0x8000; bit; bit >>= 1){
+            if((data) & bit){
+                SSPI_MOSI_HIGH();
+            } else {
+                SSPI_MOSI_LOW();
+            }
+            SSPI_SCK_HIGH();
+            SSPI_SCK_LOW();
+        }
+    }
     SPI_CS_HIGH();
 }
 /*void TFT_22_ILI9225::_writeData(uint8_t HI, uint8_t LO) {
